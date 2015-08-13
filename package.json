@@ -1,0 +1,27 @@
+{
+  "name": "tern-angular1.4.x",
+  "license": "MIT",
+  "version": "0.1.0",
+  "main": "angular.js",
+  "author": "Angelo ZERR <angelo.zerr@gmail.com>",
+  "description": "A Tern plugin adding YUI Library 3 support.",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/angelozerr/tern-angular1.4.x.git"
+  },
+  "scripts": {
+    "test": "node ./test/all.js"
+  },  
+  "dependencies": {
+    "tern": ">=0.13.0",
+    "acorn": ">=2.1.0",
+    "tern-lint": ">=0.3.0"
+  },
+  "devDependencies": { 
+    "test": ">=0.0.5"    
+  },
+  "keywords": [
+    "tern",
+    "YUI3"
+  ]
+}
