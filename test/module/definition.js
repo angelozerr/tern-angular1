@@ -10,7 +10,7 @@ exports['test Module dependencies definition'] = function() {
       "file":"test1.html",
       "contextOffset":15,
       "context":"angular.module('app1');angular.module('app2', ['ap"
-    }, null, 1);
+    }, 1);
 }
 
 if (module == require.main) require("test").run(exports);

@@ -34,7 +34,7 @@ function createServer(defs, options) {
 	return server;
 }
 
-exports.assertCompletion = function(text, expected, name, substraction) {
+exports.assertCompletion = function(text, expected, substraction, options, name) {
 	var defs = [];
 	var defNames = ["ecma5", "browser"]; 
 	if (defNames) {
@@ -45,7 +45,7 @@ exports.assertCompletion = function(text, expected, name, substraction) {
 	}
 	var queryOptions = defaultQueryOptions;
 	if (!substraction) substraction = 0; 
-	var server = createServer(defs, {});
+	var server = createServer(defs, options);
 	server.addFile("test1.js", text);
 	server.request({
 		query : {
@@ -82,7 +82,7 @@ exports.assertCompletion = function(text, expected, name, substraction) {
 	});
 }
 
-exports.assertDefinition = function (text, expected, name, substraction) {
+exports.assertDefinition = function (text, expected, substraction, options) {
   var defs = []
   var defNames = ['ecma5', 'browser']
   if (defNames) {
@@ -93,7 +93,7 @@ exports.assertDefinition = function (text, expected, name, substraction) {
   }
   var queryOptions = defaultQueryOptions
   if (!substraction) substraction = 0
-  var server = createServer(defs, {})
+  var server = createServer(defs, options ? options : {})
   server.addFile('test1.html', text)
   server.request({
     query: {
@@ -106,19 +106,7 @@ exports.assertDefinition = function (text, expected, name, substraction) {
     if (err)
       throw err
     var actualMessages = resp.messages
-    var expectedMessages = expected.messages
-
-    if (name) {
-      var actualItem = {}
-      var completions = resp['completions']
-      if (completions) {
-        completions.forEach(function (item) {
-          if (item['name'] === name) actualItem = item
-        })
-      }
-      assert.equal(JSON.stringify(actualItem), JSON.stringify(expected))
-    } else {
-      assert.equal(JSON.stringify(resp), JSON.stringify(expected))
-    }
+    var expectedMessages = expected.messages    
+    assert.equal(JSON.stringify(resp), JSON.stringify(expected))
   })
 }

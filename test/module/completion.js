@@ -8,7 +8,7 @@ exports['test Module dependencies completion'] = function() {
         "completions":[{"name":"'app1'","type":"Module","origin":"test1.js","displayName":"app1"},
                        {"name":"'app2'","type":"Module","origin":"test1.js","displayName":"app2"}
                       ]
-    }, null, 1);
+    }, 1);
 }
 
 if (module == require.main) require("test").run(exports);
