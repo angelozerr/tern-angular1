@@ -207,7 +207,7 @@
         var completion = data.completions[i], className = typeToIcon(completion.type);
         if (data.guess) className += " " + cls + "guess";
         completions.push({text: completion.name + after,
-                          displayText: completion.name,
+                          displayText: completion.displayName ? completion.displayName: completion.name,
                           className: className,
                           data: completion});
       }
@@ -433,7 +433,7 @@
 
   function atInterestingExpression(cm) {
     var pos = cm.getCursor("end"), tok = cm.getTokenAt(pos);
-    if (tok.start < pos.ch && (tok.type == "comment" || tok.type == "string")) return false;
+    if (tok.start < pos.ch && (tok.type == "comment" /*|| tok.type == "string"*/)) return false;
     return /\w/.test(cm.getLine(pos.line).slice(Math.max(pos.ch - 1, 0), pos.ch + 1));
   }
 

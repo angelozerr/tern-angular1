@@ -1,7 +1,7 @@
 "use strict";
 
 var fs = require("fs"), path = require("path"), tern = require("tern"), assert = require('assert');
-require("../yui3.js");
+require("../angular.js");
 
 var projectDir = path.resolve(__dirname, "..");
 var resolve = function(pth) {
@@ -26,7 +26,7 @@ var defaultQueryOptions = {
 
 function createServer(defs, options) {
 	var plugins = {};
-	if (options) plugins['yui3'] = options; else plugins['yui3'] = {};
+	if (options) plugins['angular'] = options; else plugins['angular'] = {};
 	var server = new tern.Server({
 		plugins : plugins,
 		defs : defs
@@ -82,10 +82,43 @@ exports.assertCompletion = function(text, expected, name, substraction) {
 	});
 }
 
-exports.generateDef = function() {
-  var yuidoc2tern = require("../generator/yui2tern");
-  var filename = __dirname+"/../generator/data/api.json";
-  var api = JSON.parse(fs.readFileSync(filename, "utf8"));
-  var def = yuidoc2tern.YUI.generate(api);
-  return def;
+exports.assertDefinition = function (text, expected, name, substraction) {
+  var defs = []
+  var defNames = ['ecma5', 'browser']
+  if (defNames) {
+    for (var i = 0; i < defNames.length; i++) {
+      var def = allDefs[defNames[i]]
+      defs.push(def)
+    }
+  }
+  var queryOptions = defaultQueryOptions
+  if (!substraction) substraction = 0
+  var server = createServer(defs, {})
+  server.addFile('test1.html', text)
+  server.request({
+    query: {
+      type: 'definition',
+      file: 'test1.html',
+      end: text.length - substraction,
+      lineCharPositions: true
+    }
+  }, function (err, resp) {
+    if (err)
+      throw err
+    var actualMessages = resp.messages
+    var expectedMessages = expected.messages
+
+    if (name) {
+      var actualItem = {}
+      var completions = resp['completions']
+      if (completions) {
+        completions.forEach(function (item) {
+          if (item['name'] === name) actualItem = item
+        })
+      }
+      assert.equal(JSON.stringify(actualItem), JSON.stringify(expected))
+    } else {
+      assert.equal(JSON.stringify(resp), JSON.stringify(expected))
+    }
+  })
 }

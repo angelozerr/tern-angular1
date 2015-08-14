@@ -1,11 +1,11 @@
 (function(mod) {
   if (typeof exports == "object" && typeof module == "object") // CommonJS
-    return mod(require("../lib/infer"), require("../lib/tern"), require("../lib/comment"),
-               require("acorn/dist/walk"), require("acorn/dist/acorn"), require);
+    return mod(require("tern/lib/infer"), require("tern/lib/tern"), require("tern/lib/comment"),
+               require("acorn/dist/walk"), require("acorn/dist/acorn"));
   if (typeof define == "function" && define.amd) // AMD
     return define(["../lib/infer", "../lib/tern", "../lib/comment", "acorn/dist/walk", "acorn/dist"], mod);
   mod(tern, tern, tern.comment, acorn.walk, acorn);
-})(function(infer, tern, comment, walk, acorn, require) {
+})(function(infer, tern, comment, walk, acorn) {
   "use strict";
 
   var SetDoc = infer.constraint({
@@ -91,6 +91,10 @@
     result.fnType = fnType;
     return result;
   }
+  
+  function getModule(name) {
+    return infer.cx().parent._angular.modules[name];  
+  }  
 
   infer.registerFunction("angular_callInject", function(argN) {
     return function(self, args, argNodes) {
@@ -231,8 +235,11 @@
     if (node && node.type == "ArrayExpression")
       for (var i = 0; i < node.elements.length; ++i) {
         var elt = node.elements[i];
-        if (elt.type == "Literal" && typeof elt.value == "string")
+        if (elt.type == "Literal" && typeof elt.value == "string") {
+          // mark node as module.
+          elt.module = true;
           strings.push(elt.value);
+        }
       }
     return strings;
   }
@@ -242,13 +249,14 @@
     return ngDefs && ngDefs.Module.getProp("prototype").getType();
   }
 
-  function declareMod(name, includes, originNode) {
+  function declareMod(name, includes, node) {
     var cx = infer.cx(), data = cx.parent._angular;
     var proto = moduleProto(cx);
     var mod = new infer.Obj(proto || true);
     if (!proto) data.nakedModules.push(mod);
     mod.origin = cx.curOrigin;
-    mod.originNode = originNode;
+    if (typeof node == "string" && !mod.span) mod.span = node;
+    else if (node && typeof node == "object" && !mod.originNode) mod.originNode = node;
     mod.injector = new Injector();
     mod.metaData = {includes: includes};
     for (var i = 0; i < includes.length; ++i) {
@@ -277,9 +285,13 @@
       if (argNode.type == "Identifier" && _args[0] && (!_args[0].getType || (_args[0].getType && !_args[0].getType()) || (_args[0].getType && _args[0].getType() && _args[0].getType().name == 'string'))) name = '#' + argNode.name;
     }
     if (typeof name == "string")
-      mod = infer.cx().parent._angular.modules[name];
-    if (!mod) 
-      mod = declareMod(name, arrayNodeToStrings(argNodes && argNodes[1]), argNodes[0]);
+      mod = getModule(name);
+    var deps = arrayNodeToStrings(argNodes && argNodes[1]);
+    // FIXME: refresh module when deps changed.
+    if (!mod) mod = declareMod(name, deps, argNodes[0]);      
+    mod.originNode = argNodes[0];
+    // mark node as module.
+    argNodes[0].module = true;    
     // enable the module
     mod.disabled = false;
     return mod;
@@ -306,36 +318,6 @@
     return result;
   });
 
-  function findPropNodeValue(obj, name) {
-    if (obj) {
-      if (obj.getFunctionType() && obj.getFunctionType().retval) obj = obj.getFunctionType().retval.getObjType();
-      else if (obj.getObjType()) obj = obj.getObjType();
-      else obj = null;
-      if (obj && obj.hasProp(name)) {
-        // returns the property node value
-        var propNodes = obj.originNode.properties;
-        for (var i = 0; i < propNodes.length; i++) {
-          if (propNodes[i].key.name == name) return propNodes[i].value;
-        }
-      }
-    }
-  }
-  
-  // mark node as templateUrl
-  infer.registerFunction("angular_templateUrl", function(argN) {
-    return function(self, args, argNodes) {
-      var node = findPropNodeValue(args && args[argN], "templateUrl");
-      if (node) {        
-        // mark node as templateUrl
-        var _angular = node._angular = {type: "templateUrl"};
-        if (node.type == "Literal" && typeof node.value == "string") {
-          var name = resolveProjectPath(node.value);
-          _angular.origin = name; 
-        }
-      }
-    };
-  });
-  
   function postParse(ast, text) {
     walk.simple(ast, {
       CallExpression: function(node) {
@@ -364,7 +346,7 @@
     var mods = defs && defs["!ng"];
     if (mods) for (var name in mods.props) {
       var obj = mods.props[name].getType();
-      var mod = declareMod(name.replace(/`/g, "."), obj.metaData && obj.metaData.includes || []);
+      var mod = declareMod(name.replace(/`/g, "."), obj.metaData && obj.metaData.includes || [], mods.props[name].span);
       mod.origin = defName;
       for (var prop in obj.props) {
         var val = obj.props[prop], tp = val.getType();
@@ -404,6 +386,7 @@
       var m;
       if (m = path.match(/^!ng\.([^\.]+)\._inject_([^\.]+)^/)) {
         var mod = mods[m[1].replace(/`/g, ".")];
+        console.log(mod.injector.fields, m[2]);
         var field = mod.injector.fields[m[2]];
         var data = state.types[path];
         if (field.span) data.span = field.span;
@@ -412,18 +395,17 @@
     }
   }
 
-  function initServer(server, options) {
+  function initServer(server) {
     server._angular = {
       modules: Object.create(null),
       pendingImports: Object.create(null),
-      nakedModules: [],
-      options: options
+      nakedModules: []
     };
   }
 
-  tern.registerPlugin("angular", function(server, options) {
-    initServer(server, options);
-    server.on("reset", function() { initServer(server, options); });    
+  tern.registerPlugin("angular", function(server) {
+    initServer(server);
+    server.on("reset", function() { initServer(server); });
     return {defs: defs,
             passes: {postParse: postParse,
                      postLoadDef: postLoadDef,
@@ -431,10 +413,82 @@
                      postCondenseReach: postCondenseReach,
                      preInfer: preInfer,
                      postInfer: postInfer,
-                     completion: completion,
-                     typeAt: typeAt},
+                     typeAt: findTypeAt,
+                     completion: findCompletions},
             loadFirst: true};
   });
+  
+  function findTypeAt(file, pos, expr, type) {
+    if (!expr) return type;
+    var isStringLiteral = expr.node.type === "Literal" &&
+       typeof expr.node.value === "string";
+    if (isStringLiteral) {
+      if(expr.node.module) {
+        var name = expr.node.value, mod = getModule(name);
+        if (mod) {
+          // The `type` is a value shared for all string literals.
+          // We must create a copy before modifying `origin` and `originNode`.
+          // Otherwise all string literals would point to the last jump location
+          type = Object.create(type);
+          if (mod.origin) type.origin = mod.origin;
+          if (mod.originNode) type.originNode = mod.originNode;
+        }
+      }
+    }
+    return type;
+  }
+  
+  function getCompletionType(expr) {
+    if (!expr) return null;
+    if (expr.node.module) return completeModuleName;
+    // TODO: support other completion type like templateUrl, controller, etc
+  }
+  
+  function findCompletions(file, query) {
+    var wordEnd = tern.resolvePos(file, query.end);
+    var expr = infer.findExpressionAround(file.ast, null, wordEnd, file.scope);
+    var complete = getCompletionType(expr);
+    if (!complete) return;
+    var argNode = expr.node;
+    var word = argNode.raw.slice(1, wordEnd - argNode.start), quote = argNode.raw.charAt(0);
+    if (word && word.charAt(word.length - 1) == quote)
+      word = word.slice(0, word.length - 1);
+    var completions = complete(query, file, argNode, word);
+    if (argNode.end == wordEnd + 1 && file.text.charAt(wordEnd) == quote)
+      ++wordEnd;
+    return {
+      start: tern.outputPos(query, file, argNode.start),
+      end: tern.outputPos(query, file, wordEnd),
+      isProperty: false,
+      completions: completions.map(function(rec) {
+        var name = typeof rec == "string" ? rec : rec.name;
+        var string = JSON.stringify(name);
+        if (quote == "'") string = quote + string.slice(1, string.length -1).replace(/'/g, "\\'") + quote;
+        if (typeof rec == "string") return string;
+        rec.displayName = name;
+        rec.name = string;
+        return rec;
+      })
+    };
+  }
+
+  function completeModuleName(query, file, argNode, word) {
+    var completions = [];
+    var cx = infer.cx(), server = cx.parent, data = server._angular;
+    
+    function gather(modules) {
+      for (var name in modules) {
+        if (name &&
+            !(query.filter !== false && word &&
+              (query.caseInsensitive ? name.toLowerCase() : name).indexOf(word) !== 0))
+          tern.addCompletion(query, completions, name, modules[name]);
+      }
+    }
+
+    if (query.caseInsensitive) word = word.toLowerCase();
+    gather(data.modules);
+    return completions;
+  }
   
   function preInfer(ast, scope) {
     // marks the angular modules of the current file as disabled.
@@ -456,86 +510,6 @@
       for (var name in mods) {
         var mod = mods[name];
         if (mod.disabled) delete mods[name];
-      }
-    }
-  }
-  
-  function normPath(name) { return name.replace(/\\/g, "/"); }
-
-  function resolveProjectPath(pth) {
-    return resolvePath(normPath(baseUrl()) + "/", normPath(pth));
-  }
-  
-  function resolvePath(base, path) {
-    if (path[0] == "/") return path;
-    var slash = base.lastIndexOf("/"), m;
-    if (slash >= 0) path = base.slice(0, slash + 1) + path;
-    while (m = /[^\/]*[^\/\.][^\/]*\/\.\.\//.exec(path))
-      path = path.slice(0, m.index) + path.slice(m.index + m[0].length);
-    return path.replace(/(^|[^\.])\.\//g, "$1");
-  }
-  
-  function relativePath(from, to) {
-    if (from[from.length - 1] != "/") from += "/";
-    if (to.indexOf(from) == 0) return to.slice(from.length);
-    else return to;
-  }
-  
-  function baseUrl() {
-    var cx = infer.cx(), server = cx.parent; 
-    return server._angular.options.baseURL || "";    
-  }
-  
-  function completeFiles(pat, c) {
-    
-  }
-  
-  //Assume node.js & access to local file system
-  if (require) (function() {
-    var fs = require("fs"), glob = require("glob"), path = require("path");
-
-    relativePath = path.relative;
-    
-    completeFiles = function(paths, c) {
-      if (paths) paths.forEach(function(pat) {
-        glob.sync(pat).forEach(function(file) {
-          c(file);
-        });
-      });     
-    }
-    
-  })();
-  
-  
-  function typeAt(file, end, expr, type) {
-    if (!expr) return type;
-    var isStringLiteral = expr.node.type === "Literal" &&
-       typeof expr.node.value === "string";
-    if (expr.node._angular) {
-      // The `type` is a value shared for all string literals.
-      // We must create a copy before modifying `origin` and `originNode`.
-      // Otherwise all string literals would point to the last jump location
-      type = Object.create(type);
-      if (expr.node._angular.origin) type.origin = expr.node._angular.origin;
-      if (expr.node._angular.doc) type.doc = expr.node._angular.doc;
-      if (expr.node._angular.url) type.url = expr.node._angular.url;
-    }
-    return type;
-  }
-  
-  function isPropValue(propNode, point) {
-    return ((propNode.value.start <= point && propNode.value.end >= point) 
-             || (propNode.value.start >= point && propNode.value.end <= point))
-  }
-  
-  function completion(file, query) {
-    var wordEnd = tern.resolvePos(file, query.end), completions, completeNode;
-    var exprAt = infer.findExpressionAround(file.ast, null, wordEnd, file.scope, "Property");
-    if (exprAt && isPropValue(exprAt.node, wordEnd)) {
-      // Completion on property value of Object literal
-      if (exprAt.node._angular) {
-        // Completion for templateUrl
-        console.log("Completion for templateUrl")
       }
     }
   }
@@ -1201,7 +1175,7 @@
           "!url": "https://docs.angularjs.org/api/ng/provider/$compileProvider",
           directive: {
             "!type": "fn(name: string, directiveFactory: fn() -> directiveObj) -> !this",
-            "!effects": ["custom angular_regFieldCallDirective", "custom angular_templateUrl 1"],
+            "!effects": ["custom angular_regFieldCallDirective"],
             "!url": "http://docs.angularjs.org/api/ng.$compileProvider#directive",
             "!doc": "Register a new directive with the compiler."
           },
@@ -1333,8 +1307,7 @@
           when: {
             "!type": "fn(path: string, route: routeObj) -> !this",
             "!doc": "Adds a new route definition to the $route service.",
-            "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#when",
-            "!effects": ["custom angular_templateUrl 1"]
+            "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#when"
           },
           otherwise: {
             "!type": "fn(params: string) -> !this",
@@ -1482,7 +1455,7 @@
   
   var querySubTypes = {
     completions: {
-        run: findCompletions
+        run: findCompletionsEL
     },
     definition: {
       run: findDef
@@ -1592,7 +1565,7 @@
   
   // Angular Modules query
   
-  function getModule(_angular, files, moduleName) {
+  function findModule(_angular, files, moduleName) {
     var module = _angular.modules[moduleName];
     // check if module exists, which is not disabled and matches teh current file.
     if (module && module.disabled != true && isBelongToFiles(module.origin, files)) return module;      
@@ -1628,7 +1601,7 @@
 
   function getScopeController(_angular, files, moduleName, controllerName) {
     if (moduleName) {
-      var module = getModule(_angular, files, moduleName);
+      var module = findModule(_angular, files, moduleName);
       if (module) {
         var fields = module.injector.fields, field = fields[controllerName];
         if (field && field.type === "controller") {
@@ -1660,7 +1633,7 @@
   
   function visitModuleControllers(_angular, files, moduleName, c) {
     var found = false;
-    var module = getModule(_angular, files, moduleName);
+    var module = findModule(_angular, files, moduleName);
     if (module) {
       var fields = module.injector.fields;
       for ( var fieldName in fields) {
@@ -1719,7 +1692,7 @@
 
   function visitDirectives(_angular, files, moduleName, c) {
     if (moduleName) {
-      var module = getModule(_angular, files, moduleName);
+      var module = findModule(_angular, files, moduleName);
       if (module) {
         var directives = module.directives;
         if (directives) {
@@ -1736,7 +1709,7 @@
 
   function visitFilters(_angular, files, moduleName, c) {
     if (moduleName) {
-      var module = getModule(_angular, files, moduleName);
+      var module = findModule(_angular, files, moduleName);
       if (module) {
         var filters = module.filters;
         if (filters) {
@@ -1753,7 +1726,7 @@
 
   function visitFactories(_angular, files, moduleName, c) {
     if (moduleName) {
-      var module = getModule(_angular, files, moduleName);
+      var module = findModule(_angular, files, moduleName);
       if (module) {
         var factories = module.factories;
         if (factories) {
@@ -1770,7 +1743,7 @@
 
   function visitProviders(_angular, files, moduleName, c) {
     if (moduleName) {
-      var module = getModule(_angular, files, moduleName);
+      var module = findModule(_angular, files, moduleName);
       if (module) {
         var providers = module.providers;
         if (providers) {
@@ -1787,7 +1760,7 @@
 
   function visitServices(_angular, files, moduleName, c) {
     if (moduleName) {
-      var module = getModule(_angular, files, moduleName);
+      var module = findModule(_angular, files, moduleName);
       if (module) {
         var services = module.services;
         if (services) {
@@ -1850,7 +1823,7 @@
     return {"word": word, "context": context};    
   }
   
-  function findCompletions(_angular, files, expression, scope, angularTypes,
+  function findCompletionsEL(_angular, files, expression, scope, angularTypes,
       query) {
     var completions = [];
     var result = {
@@ -2045,7 +2018,7 @@
         }
         // $rootScope of module
         if (moduleName) {
-          var module = getModule(_angular, files, moduleName)
+          var module = findModule(_angular, files, moduleName)
           if (module && module.rootScope) {
             infer.forAllPropertiesOf(module.rootScope, gather);
             module.rootScope.guessProperties(gather);
