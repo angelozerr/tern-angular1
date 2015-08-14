@@ -318,6 +318,52 @@
     return result;
   });
 
+  function findPropNodeValue(obj, name) {
+    if (obj) {
+      if (obj.getFunctionType() && obj.getFunctionType().retval) obj = obj.getFunctionType().retval.getObjType();
+      else if (obj.getObjType()) obj = obj.getObjType();
+      else obj = null;
+      if (obj && obj.hasProp(name)) {
+        // returns the property node value
+        var propNodes = obj.originNode.properties;
+        for (var i = 0; i < propNodes.length; i++) {
+          if (propNodes[i].key.name == name) return propNodes[i].value;
+        }
+      }
+    }
+  }
+  
+  function baseUrl() {
+    var cx = infer.cx(), server = cx.parent; 
+    return server._angular.options.baseURL || "";    
+  }
+  
+  function normPath(name) { return name.replace(/\\/g, "/"); }
+
+  function resolveProjectPath(pth) {
+    var base = baseUrl();
+    return base ? resolvePath(normPath(base) + "/", normPath(pth)): normPath(pth);
+  }
+  
+  function resolvePath(base, path) {
+    if (path[0] == "/") return path;
+    var slash = base.lastIndexOf("/"), m;
+    if (slash >= 0) path = base.slice(0, slash + 1) + path;
+    while (m = /[^\/]*[^\/\.][^\/]*\/\.\.\//.exec(path))
+      path = path.slice(0, m.index) + path.slice(m.index + m[0].length);
+    return path.replace(/(^|[^\.])\.\//g, "$1");
+  }
+  
+  infer.registerFunction("angular_templateUrl", function(argN) {
+    return function(self, args, argNodes) {
+      var node = findPropNodeValue(args && args[argN], "templateUrl");
+      if (node && node.type == "Literal" && typeof node.value == "string") {        
+        // mark node as templateUrl
+        node.templateUrl = resolveProjectPath(node.value);
+      }
+    };
+  });
+  
   function postParse(ast, text) {
     walk.simple(ast, {
       CallExpression: function(node) {
@@ -386,7 +432,6 @@
       var m;
       if (m = path.match(/^!ng\.([^\.]+)\._inject_([^\.]+)^/)) {
         var mod = mods[m[1].replace(/`/g, ".")];
-        console.log(mod.injector.fields, m[2]);
         var field = mod.injector.fields[m[2]];
         var data = state.types[path];
         if (field.span) data.span = field.span;
@@ -395,17 +440,18 @@
     }
   }
 
-  function initServer(server) {
+  function initServer(server, options) {
     server._angular = {
       modules: Object.create(null),
       pendingImports: Object.create(null),
-      nakedModules: []
+      nakedModules: [],
+      options: options
     };
   }
 
-  tern.registerPlugin("angular", function(server) {
-    initServer(server);
-    server.on("reset", function() { initServer(server); });
+  tern.registerPlugin("angular", function(server, options) {
+    initServer(server, options);
+    server.on("reset", function() { initServer(server, options); });
     return {defs: defs,
             passes: {postParse: postParse,
                      postLoadDef: postLoadDef,
@@ -424,6 +470,7 @@
        typeof expr.node.value === "string";
     if (isStringLiteral) {
       if(expr.node.module) {
+        // Angular module
         var name = expr.node.value, mod = getModule(name);
         if (mod) {
           // The `type` is a value shared for all string literals.
@@ -433,6 +480,10 @@
           if (mod.origin) type.origin = mod.origin;
           if (mod.originNode) type.originNode = mod.originNode;
         }
+      } else if (expr.node.templateUrl) {
+        // template url file
+        type = Object.create(type);
+        type.origin = expr.node.templateUrl;
       }
     }
     return type;
@@ -441,6 +492,7 @@
   function getCompletionType(expr) {
     if (!expr) return null;
     if (expr.node.module) return completeModuleName;
+    if (expr.node.templateUrl) return completeTemplateFile;
     // TODO: support other completion type like templateUrl, controller, etc
   }
   
@@ -488,6 +540,10 @@
     if (query.caseInsensitive) word = word.toLowerCase();
     gather(data.modules);
     return completions;
+  }
+  
+  function completeTemplateFile(query, file, argNode, word) {
+    
   }
   
   function preInfer(ast, scope) {
@@ -1175,7 +1231,7 @@
           "!url": "https://docs.angularjs.org/api/ng/provider/$compileProvider",
           directive: {
             "!type": "fn(name: string, directiveFactory: fn() -> directiveObj) -> !this",
-            "!effects": ["custom angular_regFieldCallDirective"],
+            "!effects": ["custom angular_regFieldCallDirective", "custom angular_templateUrl 1"],
             "!url": "http://docs.angularjs.org/api/ng.$compileProvider#directive",
             "!doc": "Register a new directive with the compiler."
           },
@@ -1307,7 +1363,8 @@
           when: {
             "!type": "fn(path: string, route: routeObj) -> !this",
             "!doc": "Adds a new route definition to the $route service.",
-            "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#when"
+            "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#when",
+            "!effects": ["custom angular_templateUrl 1"]
           },
           otherwise: {
             "!type": "fn(params: string) -> !this",
