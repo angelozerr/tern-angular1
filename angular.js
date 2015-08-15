@@ -1247,7 +1247,7 @@
         $compileProvider: {
           "!url": "https://docs.angularjs.org/api/ng/provider/$compileProvider",
           directive: {
-            "!type": "fn(name: string, directiveFactory: fn() -> directiveObj) -> !this",
+            "!type": "fn(name: string, directiveFactory: []|fn() -> directiveObj) -> !this",
             "!effects": ["custom angular_regFieldCallDirective", "custom angular_templateUrl 1"],
             "!url": "http://docs.angularjs.org/api/ng.$compileProvider#directive",
             "!doc": "Register a new directive with the compiler."
