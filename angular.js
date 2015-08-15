@@ -1140,13 +1140,13 @@
           }
         },
         $provide: {
-          "!url": "http://docs.angularjs.org/api/AUTO.$provide",
+          "!url": "https://docs.angularjs.org/api/auto/service/$provide",
           "!doc": "Use $provide to register new providers with the $injector.",
           constant: {
             "!type": "fn(name: string, value: ?) -> !this",
             "!effects": ["custom angular_regField"],
-            "!url": "http://docs.angularjs.org/api/AUTO.$provide#constant",
-            "!doc": "A constant value."
+            "!url": "https://docs.angularjs.org/api/auto/service/$provide#constant",
+            "!doc": "Register a constant service, such as a string, a number, an array, an object or a function, with the $injector. Unlike value it can be injected into a module configuration function (see angular.Module) and it cannot be overridden by an Angular decorator."
           },
           decorator: {
             "!type": "fn(name: string, decorator: fn())",
@@ -1164,7 +1164,7 @@
             "!type": "fn(name: string, providerType: fn()) -> !this",
             "!effects": ["custom angular_callProvider"],
             "!url": "http://docs.angularjs.org/api/AUTO.$provide#provider",
-            "!doc": "Register a provider for a service."
+            "!doc": "Register a provider function with the $injector. Provider functions are constructor functions, whose instances are responsible for 'providing' a factory for a service."
           },
           service: {
             "!type": "fn(name: string, constructor: fn()) -> !this",
