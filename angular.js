@@ -746,12 +746,7 @@
             "!doc": "Use this method to register work which needs to be performed on module loading."
           },
           constant: "service.$provide.constant",
-          controller: {
-            "!type": "fn(name: string, constructor: fn()) -> !this",
-            "!effects": ["custom angular_regFieldCallController"],
-            "!url": "http://docs.angularjs.org/api/ng.$controllerProvider",
-            "!doc": "Register a controller."
-          },
+          controller: "provider.$controllerProvider.register",
           directive: "provider.$compileProvider.directive",
           factory: "service.$provide.factory",
           filter: {
@@ -1277,8 +1272,10 @@
           "!url": "https://docs.angularjs.org/api/ng/provider/$controllerProvider",
           "!doc": "The $controller service is used by Angular to create new controllers. This provider allows controller registration via the register method.",
           register: {
-            "!type": "fn(name: string, constructor: fn())",
-            "!url": "https://docs.angularjs.org/api/ng/provider/$controllerProvider#register"
+            "!type": "fn(name: string, constructor: fn()|[]) -> !this",
+            "!effects": ["custom angular_regFieldCallController"],
+            "!url": "https://docs.angularjs.org/api/ng/provider/$controllerProvider#register",
+            "!doc": "This provider allows controller registration via the register method."
           },
           allowGlobals: {
             "!type": "fn()",
