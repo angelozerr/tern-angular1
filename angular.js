@@ -1,11 +1,11 @@
 (function(mod) {
   if (typeof exports == "object" && typeof module == "object") // CommonJS
     return mod(require("tern/lib/infer"), require("tern/lib/tern"), require("tern/lib/comment"),
-               require("acorn/dist/walk"), require("acorn/dist/acorn"));
+               require("acorn/dist/walk"), require("acorn/dist/acorn"), require);
   if (typeof define == "function" && define.amd) // AMD
     return define(["../lib/infer", "../lib/tern", "../lib/comment", "acorn/dist/walk", "acorn/dist"], mod);
   mod(tern, tern, tern.comment, acorn.walk, acorn);
-})(function(infer, tern, comment, walk, acorn) {
+})(function(infer, tern, comment, walk, acorn, require) {
   "use strict";
 
   var SetDoc = infer.constraint({
@@ -542,8 +542,30 @@
     return completions;
   }
   
-  function completeTemplateFile(query, file, argNode, word) {
+  function completeFiles(pat, c) {
+    //console.log("ee")
+  }
+  
+  //Assume node.js & access to local file system
+  if (require) (function() {
+    var fs = require("fs"), glob = require("glob"), path = require("path");
+
+    //relativePath = path.relative;
     
+    completeFiles = function(paths, c) {
+      if (paths) paths.forEach(function(pat) {
+        glob.sync(pat).forEach(function(file) {
+          c(file);
+        });
+      });     
+    }
+    
+  })();  
+  
+  function completeTemplateFile(query, file, argNode, word) {
+    var completions = [];
+    
+    return completions;
   }
   
   function preInfer(ast, scope) {
