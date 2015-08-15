@@ -1,3 +1,4 @@
+exports['test config validation'] = require('./config/lint');
 exports['test constant completion'] = require('./constant/completion');
 exports['test module completion'] = require('./module/completion');
 exports['test module definition'] = require('./module/definition');

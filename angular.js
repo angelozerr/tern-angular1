@@ -770,9 +770,9 @@
             "!doc": "Defines an animation hook that can be later used with $animate service and directives that use this service."
           },
           config: {
-            "!type": "fn(configFn: fn()) -> !this",
+            "!type": "fn(configFn: fn()|[]) -> !this",
             "!effects": ["custom angular_callInject 0"],
-            "!url": "http://docs.angularjs.org/api/angular.Module#config",
+            "!url": "https://docs.angularjs.org/api/ng/type/angular.Module#config",
             "!doc": "Use this method to register work which needs to be performed on module loading."
           },
           constant: "service.$provide.constant",
