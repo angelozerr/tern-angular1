@@ -338,6 +338,12 @@
     return server._angular.options.baseURL || "";    
   }
   
+  function relativePath(from, to) {
+    if (from[from.length - 1] != "/") from += "/";
+    if (to.indexOf(from) == 0) return to.slice(from.length);
+    else return to;
+  }
+  
   function normPath(name) { return name.replace(/\\/g, "/"); }
 
   function resolveProjectPath(pth) {
@@ -491,9 +497,8 @@
   
   function getCompletionType(expr) {
     if (!expr) return null;
-    if (expr.node.module) return completeModuleName;
-    if (expr.node.templateUrl) return completeTemplateFile;
-    // TODO: support other completion type like templateUrl, controller, etc
+    if (expr.node.module  != undefined) return completeModuleName;
+    if (expr.node.templateUrl != undefined) return completeTemplateUrl;
   }
   
   function findCompletions(file, query) {
@@ -524,7 +529,7 @@
     };
   }
 
-  function completeModuleName(query, file, argNode, word) {
+  function completeModuleName(query, file, node, word) {
     var completions = [];
     var cx = infer.cx(), server = cx.parent, data = server._angular;
     
@@ -543,14 +548,14 @@
   }
   
   function completeFiles(pat, c) {
-    //console.log("ee")
+    
   }
   
   //Assume node.js & access to local file system
   if (require) (function() {
     var fs = require("fs"), glob = require("glob"), path = require("path");
 
-    //relativePath = path.relative;
+    relativePath = path.relative;
     
     completeFiles = function(paths, c) {
       if (paths) paths.forEach(function(pat) {
@@ -562,11 +567,36 @@
     
   })();  
   
-  function completeTemplateFile(query, file, argNode, word) {
+  function completeTemplateUrl(query, file, node, word) {
     var completions = [];
-    
+    var baseURL = baseUrl();
+    var wrapAsObjs = query.types || query.depths || query.docs || query.urls || query.origins;
+    completeFiles(["**.+(html|htm)", "**/**.+(html|htm)"], function(htmlFile) {      
+      var filename = normPath(relativePath(baseURL, htmlFile.toString()));      
+      if (!isFileMatch(filename, word, query)) return;
+      var rec = wrapAsObjs ? {name: filename} : filename;
+      completions.push(rec);
+      
+      if ((query.types || query.docs || query.urls || query.origins)) {
+        if (query.types) rec.type= "{}";
+        if (query.origins) rec.origin= baseURL + '/' + filename;
+      }
+    });
     return completions;
   }
+  
+  function isFileMatch(filename, word, query) {
+    if (query.caseInsensitive) filename = filename.toLowerCase();
+    if (startsWithString(filename, word)) return true;
+    var index = word.indexOf('/');
+    if (index == -1) {
+      // search by filename
+      var nameIndex = filename.indexOf('/');
+      var name = nameIndex != 1 ? filename.substring(nameIndex + 1, filename.length) : filename;
+      if (startsWithString(name, word)) return true;
+    }
+    return false;
+  }  
   
   function preInfer(ast, scope) {
     // marks the angular modules of the current file as disabled.
