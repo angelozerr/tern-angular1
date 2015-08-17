@@ -65,13 +65,22 @@
   function applyWithInjection(mod, fnType, node, asNew) {
     var deps = [];
     if (node.type == "FunctionExpression") {
-      for (var i = 0; i < node.params.length; ++i)
-        deps.push(getInclude(mod, node.params[i].name));
+      for (var i = 0; i < node.params.length; ++i) {
+        var elt = node.params[i];
+        // mark node as field name
+        elt.parentModule = mod;
+        var dep = elt.field = getInclude(mod, elt.name);
+        deps.push(dep);
+      }
     } else if (node.type == "ArrayExpression") {
-      for (var i = 0; i < node.elements.length - 1; ++i) {
+      for (var i = 0; i < node.elements.length; ++i) {
         var elt = node.elements[i];
-        if (elt.type == "Literal" && typeof elt.value == "string")
-          deps.push(getInclude(mod, elt.value));
+        if (elt.type == "Literal" && typeof elt.value == "string") {
+          // mark node as field name
+          elt.parentModule = mod;
+          var dep = elt.field = getInclude(mod, elt.value);
+          deps.push(dep);
+        }
         else
           deps.push(infer.ANull);
       }
@@ -470,12 +479,19 @@
             loadFirst: true};
   });
   
+  function copyTypeInfo(from, to) {
+    if (from.doc) to.doc = from.doc;
+    if (from.url) to.url = from.url;
+    if (from.origin) to.origin = from.origin;
+    if (from.originNode) to.originNode = from.originNode;
+  }
+  
   function findTypeAt(file, pos, expr, type) {
     if (!expr) return type;
     var isStringLiteral = expr.node.type === "Literal" &&
        typeof expr.node.value === "string";
     if (isStringLiteral) {
-      if(expr.node.module) {
+      if(expr.node.module != undefined) {
         // Angular module
         var name = expr.node.value, mod = getModule(name);
         if (mod) {
@@ -483,13 +499,16 @@
           // We must create a copy before modifying `origin` and `originNode`.
           // Otherwise all string literals would point to the last jump location
           type = Object.create(type);
-          if (mod.origin) type.origin = mod.origin;
-          if (mod.originNode) type.originNode = mod.originNode;
+          copyTypeInfo(mod, type);
         }
-      } else if (expr.node.templateUrl) {
+      } else if (expr.node.templateUrl != undefined) {
         // template url file
         type = Object.create(type);
         type.origin = expr.node.templateUrl;
+      } else if (expr.node.field  != undefined && expr.node.field.getType && expr.node.field.getType()) {
+        var fieldType = expr.node.field.getType();
+        type = Object.create(type);
+        copyTypeInfo(fieldType, type);
       }
     }
     return type;
@@ -499,6 +518,7 @@
     if (!expr) return null;
     if (expr.node.module  != undefined) return completeModuleName;
     if (expr.node.templateUrl != undefined) return completeTemplateUrl;
+    if (expr.node.field != undefined) return completeInjectionParam;
   }
   
   function findCompletions(file, query) {
@@ -506,10 +526,16 @@
     var expr = infer.findExpressionAround(file.ast, null, wordEnd, file.scope);
     var complete = getCompletionType(expr);
     if (!complete) return;
-    var argNode = expr.node;
-    var word = argNode.raw.slice(1, wordEnd - argNode.start), quote = argNode.raw.charAt(0);
-    if (word && word.charAt(word.length - 1) == quote)
-      word = word.slice(0, word.length - 1);
+    var argNode = expr.node, isStringName = argNode.type == "Literal";
+    var word, quote;
+    if(isStringName) {
+      word = argNode.raw.slice(1, wordEnd - argNode.start);
+      quote = argNode.raw.charAt(0);
+      if (word && word.charAt(word.length - 1) == quote)
+        word = word.slice(0, word.length - 1);  
+    } else {
+      word = argNode.name.slice(0, wordEnd - argNode.start);
+    }    
     var completions = complete(query, file, argNode, word);
     if (argNode.end == wordEnd + 1 && file.text.charAt(wordEnd) == quote)
       ++wordEnd;
@@ -519,6 +545,10 @@
       isProperty: false,
       completions: completions.map(function(rec) {
         var name = typeof rec == "string" ? rec : rec.name;
+        if (!isStringName) {
+          if (typeof rec == "string") return name;
+          return rec;
+        }        
         var string = JSON.stringify(name);
         if (quote == "'") string = quote + string.slice(1, string.length -1).replace(/'/g, "\\'") + quote;
         if (typeof rec == "string") return string;
@@ -596,11 +626,32 @@
       // search by filename
       var nameIndex = filename.indexOf('/');
       var name = nameIndex != 1 ? filename.substring(nameIndex + 1, filename.length) : filename;
-      
       if (startsWithString(name, word)) return true;
     }
     return false;
   }  
+  
+  function completeInjectionParam(query, file, node, word) {
+    var completions = [], mod = node.parentModule, fields = mod && mod.injector && mod.injector.fields;
+    if (!fields) return;
+    var cx = infer.cx(), angular = cx.definitions.angular;
+    
+    function gather(fields, checkType) {
+      for (var name in fields) {
+        if (name &&
+            !(query.filter !== false && word &&
+              (query.caseInsensitive ? name.toLowerCase() : name).indexOf(word) !== 0)
+            && (!checkType || (checkType && fields[name].getType())))
+          tern.addCompletion(query, completions, name, fields[name]);
+      }
+    }
+
+    if (query.caseInsensitive) word = word.toLowerCase();    
+    gather(angular.service.props);
+    gather(angular.provider.props);
+    gather(fields, true);
+    return completions;
+  }
   
   function preInfer(ast, scope) {
     // marks the angular modules of the current file as disabled.
@@ -1134,7 +1185,8 @@
           isEnabled: "fn() -> bool"
         },
         $templateCache: {
-          "!url": "http://docs.angularjs.org/api/ng.$templateCache",
+          "!url": "https://docs.angularjs.org/api/ng/service/$templateCache",
+          "!doc": "The first time a template is used, it is loaded in the template cache for quick retrieval. You can load templates directly into the cache in a script tag, or by consuming the $templateCache service directly.",
           "!proto": "cacheObj"
         },
         $timeout: {
