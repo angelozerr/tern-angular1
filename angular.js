@@ -567,18 +567,21 @@
     
   })();  
   
+  var htmlExtensions = "html|htm|xhtml|jsp|jsf|php";
+  
   function completeTemplateUrl(query, file, node, word) {
     var completions = [];
     var baseURL = baseUrl();
     var wrapAsObjs = query.types || query.depths || query.docs || query.urls || query.origins;
-    completeFiles(["**.+(html|htm)", "**/**.+(html|htm)"], function(htmlFile) {      
+    completeFiles(["**.+(" + htmlExtensions + ")", "**/**.+(" + htmlExtensions + ")"], function(htmlFile) {
+      if (!startsWithString(htmlFile.toString(), baseURL)) return false; // templateUrl seems not support relative path?
       var filename = normPath(relativePath(baseURL, htmlFile.toString()));      
       if (!isFileMatch(filename, word, query)) return;
       var rec = wrapAsObjs ? {name: filename} : filename;
       completions.push(rec);
       
       if ((query.types || query.docs || query.urls || query.origins)) {
-        if (query.types) rec.type= "{}";
+        // if (query.types) rec.type= "{}";
         if (query.origins) rec.origin= baseURL + '/' + filename;
       }
     });
@@ -593,6 +596,7 @@
       // search by filename
       var nameIndex = filename.indexOf('/');
       var name = nameIndex != 1 ? filename.substring(nameIndex + 1, filename.length) : filename;
+      
       if (startsWithString(name, word)) return true;
     }
     return false;
