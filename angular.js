@@ -66,22 +66,21 @@
     var deps = [];
     if (node.type == "FunctionExpression") {
       for (var i = 0; i < node.params.length; ++i) {
-        var elt = node.params[i];
-        // mark node as field name
-        elt.parentModule = mod;
-        var dep = elt.field = getInclude(mod, elt.name);
+        var elt = node.params[i], dep = getInclude(mod, elt.name);
         deps.push(dep);
+        // mark node as field name
+        elt.angular = {type: "field", parentModule: mod, field: dep};
       }
     } else if (node.type == "ArrayExpression") {
       for (var i = 0; i < node.elements.length; ++i) {
         var elt = node.elements[i];
         if (elt.type == "Literal" && typeof elt.value == "string") {
-          // mark node as field name
-          elt.parentModule = mod;
-          var dep = elt.field = getInclude(mod, elt.value);
+          var dep = getInclude(mod, elt.value);
           deps.push(dep);
+          // mark node as field name
+          elt.angular = {type: "field", parentModule: mod, field: dep};
         }
-        else
+        else if (i < node.elements.length)
           deps.push(infer.ANull);
       }
       var last = node.elements[node.elements.length - 1];
@@ -246,7 +245,7 @@
         var elt = node.elements[i];
         if (elt.type == "Literal" && typeof elt.value == "string") {
           // mark node as module.
-          elt.module = true;
+          elt.angular = {type: "module", dep: true};
           strings.push(elt.value);
         }
       }
@@ -300,7 +299,7 @@
     if (!mod) mod = declareMod(name, deps, argNodes[0]);      
     mod.originNode = argNodes[0];
     // mark node as module.
-    argNodes[0].module = true;    
+    argNodes[0].angular = {type: "module"};    
     // enable the module
     mod.disabled = false;
     return mod;
@@ -374,7 +373,7 @@
       var node = findPropNodeValue(args && args[argN], "templateUrl");
       if (node && node.type == "Literal" && typeof node.value == "string") {        
         // mark node as templateUrl
-        node.templateUrl = resolveProjectPath(node.value);
+        node.angular = {type: "templateUrl", templateUrl: resolveProjectPath(node.value)};
       }
     };
   });
@@ -486,8 +485,21 @@
     if (from.originNode) to.originNode = from.originNode;
   }
   
+  function getTypeAt(expr) {
+    if (!expr || !expr.node || !expr.node.angular) return null;
+    var data = expr.node.angular;
+    if (data.type == "module") return typeAtModuleName;
+    if (data.type == "templateUrl") return typeAtTemplateUrl;
+    if (data.type == "field") return typeAtField;
+  }
+  
   function findTypeAt(file, pos, expr, type) {
-    if (!expr) return type;
+    var typeAt = getTypeAt(expr);
+    if (!typeAt) return type;
+    var t = typeAt(file, pos, expr, type);
+    return t ? t : type;
+    
+    
     var isStringLiteral = expr.node.type === "Literal" &&
        typeof expr.node.value === "string";
     if (isStringLiteral) {
@@ -514,11 +526,37 @@
     return type;
   }
   
+  function typeAtModuleName(file, pos, expr, type) {
+    if (!(expr.node.type === "Literal" && typeof expr.node.value === "string")) return;
+    // Angular module
+    var name = expr.node.value, mod = getModule(name);
+    if (mod) {
+      type = Object.create(type);
+      copyTypeInfo(mod, type);
+    }
+    return type;
+  }
+  
+  function typeAtTemplateUrl(file, pos, expr, type) {
+    if (!(expr.node.type === "Literal" && typeof expr.node.value === "string")) return;
+    type.origin = expr.node.angular.templateUrl;
+    return type;
+  }
+
+  function typeAtField(file, pos, expr, type) {
+    if (!(expr.node.type === "Literal" && typeof expr.node.value === "string")) return;
+    var fieldType = expr.node.angular.field && expr.node.angular.field.getType();
+    type = Object.create(type);
+    copyTypeInfo(fieldType, type);
+    return type;
+  }
+
   function getCompletionType(expr) {
-    if (!expr) return null;
-    if (expr.node.module  != undefined) return completeModuleName;
-    if (expr.node.templateUrl != undefined) return completeTemplateUrl;
-    if (expr.node.field != undefined) return completeInjectionParam;
+    if (!expr || !expr.node || !expr.node.angular) return null;
+    var data = expr.node.angular;
+    if (data.type == "module" && data.dep) return completeModuleName;
+    if (data.type == "templateUrl") return completeTemplateUrl;
+    if (data.type == "field") return completeInjectionParam;
   }
   
   function findCompletions(file, query) {
@@ -632,7 +670,7 @@
   }  
   
   function completeInjectionParam(query, file, node, word) {
-    var completions = [], mod = node.parentModule, fields = mod && mod.injector && mod.injector.fields;
+    var completions = [], mod = node.angular && node.angular.parentModule, fields = mod && mod.injector && mod.injector.fields;
     if (!fields) return;
     var cx = infer.cx(), angular = cx.definitions.angular;
     
