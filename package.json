@@ -1,29 +1,28 @@
 {
-  "name": "tern-angularjs",
+  "name": "tern-angular1",
   "license": "MIT",
   "version": "0.1.0",
-  "main": "angular.js",
+  "main": "angular1.js",
   "author": "Angelo ZERR <angelo.zerr@gmail.com>",
-  "description": "A Tern plugin adding Angular support.",
+  "description": "A Tern plugin adding AngularJS 1.x support.",
   "repository": {
     "type": "git",
-    "url": "git://github.com/angelozerr/tern-angularjs.git"
+    "url": "git://github.com/angelozerr/tern-angular1.git"
   },
   "scripts": {
     "test": "node ./test/all.js"
   },
   "dependencies": {
-    "tern": "^0.14.0",
-    "acorn": "^2.3.0",
+    "tern": "^0.16.0",
+    "acorn": "^2.6.4",
     "glob": "3",
-    "minimatch": "0.2",
     "tern-lint": ">=0.3.0"
   },
   "devDependencies": { 
   	"test": ">=0.0.5",
-  	"codemirror": "^5.6.0",
-  	"codemirror-extension": "^0.1.0",
-  	"codemirror-javascript": "^0.1.0"
+  	"codemirror": "^5.9.0",
+  	"codemirror-extension": "^0.2.0",
+  	"codemirror-javascript": "^0.2.0"
   },
   "keywords": [
     "tern",

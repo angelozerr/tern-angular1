@@ -1,7 +1,7 @@
 "use strict";
 
 var fs = require("fs"), path = require("path"), tern = require("tern"), assert = require('assert');
-require("../angular.js");
+require("../angular1.js");
 
 var projectDir = path.resolve(__dirname, "..");
 var resolve = function(pth) {
