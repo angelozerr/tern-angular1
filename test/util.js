@@ -26,7 +26,7 @@ var defaultQueryOptions = {
 
 function createServer(defs, options) {
 	var plugins = {};
-	if (options) plugins['angular'] = options; else plugins['angular'] = {};
+	if (options) plugins['angular1'] = options; else plugins['angular1'] = {};
 	var server = new tern.Server({
 		plugins : plugins,
 		defs : defs

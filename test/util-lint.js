@@ -28,7 +28,7 @@ var createServer = exports.createServer = function(defNames, options) {
   }
   var plugins = {
     "lint" : options ? options : {},
-    "angular": {}
+    "angular1": {}
   };
   var server = new tern.Server({
     plugins : plugins,

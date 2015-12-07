@@ -463,7 +463,7 @@
     };
   }
 
-  tern.registerPlugin("angular", function(server, options) {
+  tern.registerPlugin("angular1", function(server, options) {
     initServer(server, options);
     server.on("reset", function() { initServer(server, options); });
     server.on("postParse", postParse)

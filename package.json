@@ -16,7 +16,7 @@
     "tern": "^0.16.0",
     "acorn": "^2.6.4",
     "glob": "3",
-    "tern-lint": ">=0.3.0"
+    "tern-lint": "^0.6.0"
   },
   "devDependencies": { 
   	"test": ">=0.0.5",
