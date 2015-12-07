@@ -4,7 +4,7 @@ exports['test config signature validation'] = function() {
   
   // Number => error
   util.assertLint("angular.module('app1').config(10)", {
-    messages : [{"message":"Invalid argument at 1: cannot convert from Number.prototype to Function.prototype|Array.prototype",
+    messages : [{"message":"Invalid argument at 1: cannot convert from number to Function.prototype|Array",
                  "from":30,
                  "to":32,
                  "severity":"error",
