@@ -301,7 +301,7 @@
     // mark node as module.
     argNodes[0].angular = {type: "module"};    
     // enable the module
-    mod.disabled = false;
+    mod.excluded = false;
     return mod;
   });
 
@@ -691,25 +691,25 @@
   }
   
   function preInfer(ast, scope) {
-    // marks the angular modules of the current file as disabled.
+    // marks the angular modules of the current file as excluded.
     // module are enabled inside the angular_module tern function.
     var filename = ast.sourceFile.name, mods = infer.cx().parent.mod.angular.modules;
     if (mods) {      
       for (var name in mods) {
         var mod = mods[name];
         // disable the module
-        if (mod.originNode && mod.originNode.sourceFile.name == filename) mod.disabled = true;
+        if (mod.originNode && mod.originNode.sourceFile.name == filename) mod.excluded = true;
       }
     }
   }
   
   function postInfer(ast, scope) {
-    // delete the angular modules of the current file which are marked as disabled.
+    // delete the angular modules of the current file which are marked as excluded.
     var filename = ast.sourceFile.name, mods = infer.cx().parent.mod.angular.modules;
     if (mods) {      
       for (var name in mods) {
         var mod = mods[name];
-        if (mod.disabled) delete mods[name];
+        if (mod.excluded) delete mods[name];
       }
     }
   }
@@ -1767,15 +1767,15 @@
   
   function findModule(_angular, files, moduleName) {
     var module = _angular.modules[moduleName];
-    // check if module exists, which is not disabled and matches teh current file.
-    if (module && module.disabled != true && isBelongToFiles(module.origin, files)) return module;      
+    // check if module exists, which is not excluded and matches teh current file.
+    if (module && module.excluded != true && isBelongToFiles(module.origin, files)) return module;      
   }
 
   function visitModules(_angular, files, c) {
     for ( var moduleName in _angular.modules) {
       var module = _angular.modules[moduleName];
-      // check if module exists, which is not disabled and matches teh current file.
-      if (module.disabled != true && isBelongToFiles(module.origin, files)) {
+      // check if module exists, which is not excluded and matches teh current file.
+      if (module.excluded != true && isBelongToFiles(module.origin, files)) {
         if (c(moduleName, module))
           break;
       }
@@ -2130,7 +2130,7 @@
       case 'directives':
         // find directives for the all modules.
         for (var moduleName in _angular.modules) {
-          if (_angular.modules[moduleName].disabled != true) completionDirectives(_angular, files, moduleName);
+          if (_angular.modules[moduleName].excluded != true) completionDirectives(_angular, files, moduleName);
         }
         break;
       case 'filter':
