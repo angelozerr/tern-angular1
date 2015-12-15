@@ -1680,7 +1680,8 @@
       var filesName = query.files;
       if (filesName) {
         for ( var i = 0; i < filesName.length; i++) {
-          files.push(server.findFile(filesName[i]));
+          var f = server.findFile(filesName[i]);
+          if (f) files.push(f);
         }
       }
 
