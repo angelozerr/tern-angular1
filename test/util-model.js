@@ -51,7 +51,7 @@ exports.assertCompletion = function(text, angularTypes, expression, scope, expec
       expression: expression || ""
   };
   if (scope) query.scope = scope;
-          console.log(query)
+          
   server.request({
       query : query
   }, function(err, resp) {

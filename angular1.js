@@ -351,7 +351,7 @@
       // call super AngularElement update
       AngularElement.prototype.update.apply(this, arguments);
       // update controller if it is defined inside the directive
-      var mod = parent, objType = this.getRetObjType();
+      var mod = this.parent, objType = this.getRetObjType();
       if (objType) {
         var ctrlType = objType.hasProp("controller") && objType.hasProp("controller").getType();
         if (ctrlType instanceof infer.Fn) {
@@ -359,7 +359,7 @@
           var argNode = this.originNode, node = ctrlType.originNode;                  
           var result = applyWithInjection(mod, ctrlType, node);
           if (mod.injector)
-            mod.injector.set(name + '#controller', result, argNode.angularDoc, argNode, null, 'controller');
+            mod.injector.set(this.eltName + '#controller', result, argNode.angularDoc, argNode, null, 'controller');
         }
       }
     }
