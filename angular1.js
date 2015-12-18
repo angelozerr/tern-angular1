@@ -247,7 +247,8 @@
     var fnType = this.fnType;
     if (fnType) fnType = fnType.getFunctionType();
     if (!(fnType && fnType instanceof infer.Fn && fnType.retval)) return;
-    return fnType.retval.getObjType();
+    var objType = fnType.retval.getObjType();
+    if (objType && objType.originNode && objType.originNode.type == "ObjectExpression" ) return objType;
   } 
   
   AngularElement.prototype.addElement = function(args, argNodes, kind) {    
@@ -259,6 +260,9 @@
     } else if (node.type == "ArrayExpression") {
       // 2) syntax: module.directive("mydir", function() {return {}};
       fnType = args[1].getProp("<i>").getFunctionType();
+    } else if (node.type == "CallExpression") {
+      // 2) syntax: module.directive("mydir", function() {return {}};
+      // fnType = args[1];
     }
     var fieldName = kind == "factory" ? "factories" : kind + "s";
     if (this.kinds.indexOf(fieldName) < 0) this.kinds.push(fieldName);
@@ -337,7 +341,7 @@
         var p = properties[i];
         var name = p.key.name, value = p.value.value;
         var prop = addItem(name, "property", item);
-        prop.value = value;
+        if (value) prop.value = value;
       }
     }
   }
@@ -352,7 +356,7 @@
       AngularElement.prototype.update.apply(this, arguments);
       // update controller if it is defined inside the directive
       var mod = this.parent, objType = this.getRetObjType();
-      if (objType) {
+      if (objType) {        
         var ctrlType = objType.hasProp("controller") && objType.hasProp("controller").getType();
         if (ctrlType instanceof infer.Fn) {
           // case: .directive('btnRadio', function () {return {controller: function($scope) {}}; 
