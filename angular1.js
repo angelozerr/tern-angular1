@@ -244,7 +244,10 @@
   }
   
   AngularElement.prototype.getRetObjType = function() {
-    var fnType = this.fnType;
+    var fnType = this.fnType && this.fnType.getType();
+    if (fnType instanceof infer.Arr) {
+      fnType = fnType.getProp("<i>").getFunctionType();
+    }
     if (fnType) fnType = fnType.getFunctionType();
     if (!(fnType && fnType instanceof infer.Fn && fnType.retval)) return;
     var objType = fnType.retval.getObjType();
@@ -252,18 +255,7 @@
   } 
   
   AngularElement.prototype.addElement = function(args, argNodes, kind) {    
-    var node = argNodes[1], name = argNodes[0].value, originNode = argNodes[0], fnType;
-    // get the directive, filter, etc function.
-    if (node.type == "FunctionExpression" || node.type == "Identifier") {
-      // 1) syntax: module.directive("mydir", function() {return {}};
-      fnType = args[1];
-    } else if (node.type == "ArrayExpression") {
-      // 2) syntax: module.directive("mydir", function() {return {}};
-      fnType = args[1].getProp("<i>").getFunctionType();
-    } else if (node.type == "CallExpression") {
-      // 2) syntax: module.directive("mydir", function() {return {}};
-      // fnType = args[1];
-    }
+    var node = argNodes[1], name = argNodes[0].value, originNode = argNodes[0], fnType = args[1];
     var fieldName = kind == "factory" ? "factories" : kind + "s";
     if (this.kinds.indexOf(fieldName) < 0) this.kinds.push(fieldName);
     var elts = !this[fieldName] ? this[fieldName] = {} : this[fieldName];
