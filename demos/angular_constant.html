@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>YUI Tern Demo</title>
+    <title>Angular1 Tern Demo</title>
     
     <!-- CodeMirror -->
     <link rel="stylesheet" href="../node_modules/codemirror/lib/codemirror.css">
@@ -27,7 +27,7 @@
   <script src="../node_modules/tern/lib/comment.js"></script>
   <script src="../node_modules/tern/lib/infer.js"></script>
   
-  <script src="../angular.js"></script>
+  <script src="../angular1.js"></script>
   
   <!-- Official CodeMirror Tern addon -->
   <script src="../node_modules/codemirror/addon/tern/tern.js"></script>   
@@ -59,8 +59,8 @@
   </head>
   <body>
     
-    <h1>Demo with YUI Tern plugin</h1>
-	<p>See <a href="https://github.com/angelozerr/tern.yuidoc">https://github.com/angelozerr/tern.yuidoc</a> for more infos.</p>  
+    <h1>Demo with Angular1 Tern plugin</h1>
+	<p>See <a href="https://github.com/angelozerr/tern-angular1">https://github.com/angelozerr/tern-angular1</a> for more infos.</p>  
     <form><textarea id="code" name="code">angular.module('app1')
   .constant('myConfig', {a:1, b:''})
   .controller('ctrl1', function(myConfig) {
@@ -103,7 +103,7 @@
         },
         gutters: ["CodeMirror-linenumbers"],
     	textHover: {delay:300},
-    	ternWith: { plugins: {"angular" : {}}}
+    	ternWith: { plugins: {"angular1" : {}}}
       });
     </script>
     

@@ -9,12 +9,9 @@ var resolve = function(pth) {
 };
 var browser = JSON.parse(fs
 		.readFileSync(resolve("node_modules/tern/defs/browser.json")), "utf8");
-var ecma5 = JSON.parse(fs
-		.readFileSync(resolve("node_modules/tern/defs/ecma5.json")), "utf8");
        
 var allDefs = {
-	browser : browser,
-	ecma5 : ecma5
+	browser : browser
 };
 
 var defaultQueryOptions = {
@@ -36,7 +33,7 @@ function createServer(defs, options) {
 
 exports.assertCompletion = function(text, expected, substraction, options, name) {
 	var defs = [];
-	var defNames = ["ecma5", "browser"]; 
+	var defNames = ["browser"]; 
 	if (defNames) {
 		for (var i = 0; i < defNames.length; i++) {
 			var def = allDefs[defNames[i]];
@@ -84,7 +81,7 @@ exports.assertCompletion = function(text, expected, substraction, options, name)
 
 exports.assertDefinition = function (text, expected, substraction, options) {
   var defs = []
-  var defNames = ['ecma5', 'browser']
+  var defNames = ['browser']
   if (defNames) {
     for (var i = 0; i < defNames.length; i++) {
       var def = allDefs[defNames[i]]

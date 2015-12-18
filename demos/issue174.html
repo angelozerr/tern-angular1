@@ -28,6 +28,7 @@
   <script src="../node_modules/tern/lib/infer.js"></script>
   
   <script src="../angular1.js"></script>
+  <script src="../node_modules/tern-push/push.js"></script>
   
   <!-- Official CodeMirror Tern addon -->
   <script src="../node_modules/codemirror/addon/tern/tern.js"></script>   
@@ -61,9 +62,28 @@
     
     <h1>Demo with Angular1 Tern plugin</h1>
 	<p>See <a href="https://github.com/angelozerr/tern-angular1">https://github.com/angelozerr/tern-angular1</a> for more infos.</p>  
-    <form><textarea id="code" name="code">angular.module('app1', []);
-angular.module('app2', [''])
-angular.module('app3', ['']);</textarea></form>
+    <form>
+    
+   <table style="width: 100%;height: 500px">
+    	<tr>
+    		<td valign="top" style="width: 50%">
+<textarea id="code" name="code">angular.module('app', [])
+    .directive('test', function () {
+        return {
+            restrict: "test.html"
+        };
+    }); 
+</textarea>    		
+    		</td>
+    		<td valign="top">
+    			<textarea id="outline" style="width:300px;height:100%" >
+    			
+    			</textarea>    		
+    		</td>
+    	</tr>
+    
+    </table>    
+	</form>
     <script type="text/javascript">
        
       function passAndHint(cm) {
@@ -99,8 +119,13 @@ angular.module('app3', ['']);</textarea></form>
         },
         gutters: ["CodeMirror-linenumbers"],
     	textHover: {delay:300},
-    	ternWith: { plugins: {"angular1" : {}}}
+    	ternWith: { plugins: {"push": {}, "angular1" : {}}}
       });
+      
+      var server = CodeMirror.tern.getServer(editor);
+      server.server.on("angular:modelChanged", function(data) {
+        document.getElementById("outline").value = JSON.stringify(data, null, " ");
+      })
     </script>
     
   </body>

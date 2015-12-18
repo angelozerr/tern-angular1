@@ -10,12 +10,9 @@ var resolve = function(pth) {
 };
 var browser = JSON.parse(fs
     .readFileSync(resolve("node_modules/tern/defs/browser.json")), "utf8");
-var ecma5 = JSON.parse(fs
-    .readFileSync(resolve("node_modules/tern/defs/ecma5.json")), "utf8");
 
 var allDefs = {
-  browser : browser,
-  ecma5 : ecma5
+  browser : browser
 };
 
 var createServer = exports.createServer = function(defNames, options) {
