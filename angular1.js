@@ -307,7 +307,7 @@
   
   AngularElement.prototype.toJSON = function(parent) {
     
-    function addItem(name, kind, parent) {
+    function addItem(name, kind, originNode, parent) {
       if (!(parent instanceof Array)) {
         if (parent.children) {
           parent = parent.children;
@@ -316,11 +316,16 @@
         } 
       }
       var item = {"name": name, "kind": kind};
+      if (originNode) {
+        item.start = originNode.start;
+        item.end = originNode.end;
+        item.file = originNode.sourceFile.name;        
+      }
       parent.push(item);
       return item;
     }
    
-    var item = addItem(this.eltName, this.kind, parent);
+    var item = addItem(this.eltName, this.kind, this.originNode, parent);
     for (var i = 0; i < this.kinds.length; i++) {
       var children = this[this.kinds[i]];
       for (var name in children) children[name].toJSON(item);      
@@ -332,7 +337,7 @@
       for ( var i = 0; i < properties.length; i++) {
         var p = properties[i];
         var name = p.key.name, value = p.value.value;
-        var prop = addItem(name, "property", item);
+        var prop = addItem(name, "property", p.key, item);
         if (value) prop.value = value;
       }
     }
