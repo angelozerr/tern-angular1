@@ -952,7 +952,7 @@
           "!doc": "The compile function deals with transforming the template DOM. Since most directives do not do template transformation, it is not used often."
         },
         link: {
-          "!type": "fn(scope: ?, iElement: +Element, iAttrs: +Attr, controller: ?, transcludeFn: fn())",
+          "!type": "fn(scope: ?, iElement: +Element, iAttrs: +Attr, controller: string|[string], transcludeFn: fn())",
           "!url": "https://docs.angularjs.org/api/ng/service/$compile#-link-",
           "!doc": "The link function is responsible for registering DOM listeners as well as updating the DOM. It is executed after the template has been cloned. This is where most of the directive logic will be put."
         }
@@ -2609,9 +2609,9 @@
   
   tern.defineQueryType("angular-outline", {
     run : function(server, query) {
-      var angular = server.mod.angular, mods = angular.modules, outline = {};
+      var angular = server.mod.angular, mods = angular.modules, outline = [];
       for (var name in mods) mods[name].toJSON(outline);
-      return outline;
+      return {outline: outline};
     }    
   });
   
