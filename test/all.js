@@ -12,6 +12,7 @@ exports['test module outline'] = require('./module/outline');
 exports['test controller completion (expression)'] = require('./controller/completion_expression');
 exports['test controller params completion'] = require('./controller/completion_params');
 exports['test controller validation'] = require('./controller/lint');
+exports['test controller outline'] = require('./controller/outline');
 
 // Angular directive tests
 exports['test directive completion (expression)'] = require('./directive/completion_expression');

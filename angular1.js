@@ -115,11 +115,13 @@
     };
   });
 
-  infer.registerFunction("angular_regFieldCallController", function(self, args, argNodes) {
-    angular_regFieldCall(self, args, argNodes, 'controller')
+  infer.registerFunction("angular_controller", function(self, args, argNodes) {
+    angular_regFieldCall(self, args, argNodes, 'controller');
+    var mod = self.getType();
+    if (mod && argNodes && argNodes.length > 1) mod.addElement(args, argNodes, "controller");
   });
     
-  infer.registerFunction("angular_regFieldCallDirective", function(self, args, argNodes) {
+  infer.registerFunction("angular_directive", function(self, args, argNodes) {
     var mod = self.getType();
     if (mod && argNodes && argNodes.length > 1) mod.addElement(args, argNodes, "directive");
   });
@@ -1481,7 +1483,7 @@
           "!url": "https://docs.angularjs.org/api/ng/provider/$compileProvider",
           directive: {
             "!type": "fn(name: string, directiveFactory: []|fn() -> directiveObj) -> !this",
-            "!effects": ["custom angular_regFieldCallDirective", "custom angular_templateUrl 1"],
+            "!effects": ["custom angular_directive", "custom angular_templateUrl 1"],
             "!url": "http://docs.angularjs.org/api/ng.$compileProvider#directive",
             "!doc": "Register a new directive with the compiler."
           },
@@ -1506,7 +1508,7 @@
           "!doc": "The $controller service is used by Angular to create new controllers. This provider allows controller registration via the register method.",
           register: {
             "!type": "fn(name: string, constructor: fn()|[]) -> !this",
-            "!effects": ["custom angular_regFieldCallController"],
+            "!effects": ["custom angular_controller"],
             "!url": "https://docs.angularjs.org/api/ng/provider/$controllerProvider#register",
             "!doc": "This provider allows controller registration via the register method."
           },
