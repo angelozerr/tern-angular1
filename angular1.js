@@ -334,7 +334,7 @@
     }
     
     var objType = this.getRetObjType(); 
-    if (objType && objType.originNode.properties && objType.originNode.properties) {
+    if (objType && objType.originNode && objType.originNode.properties) {
       var properties = objType.originNode.properties;
       for ( var i = 0; i < properties.length; i++) {
         var p = properties[i];
