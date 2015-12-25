@@ -76,7 +76,9 @@
         var elt = node.elements[i];
         if (elt.type == "Literal" && typeof elt.value == "string") {
           var dep = getInclude(mod, elt.value);
-          deps.push(dep);
+          var a = new infer.Obj(dep.getProp("prototype").getType());
+          a._MODULEEEEEEEEEEE = mod;
+          deps.push(a);
           // mark node as field name
           elt.angular = {type: "field", parentModule: mod, field: dep};
         }
@@ -108,10 +110,24 @@
     return function(self, args, argNodes) {
       var mod = self.getType();
       if (mod && argNodes && argNodes[argN])
-        applyWithInjection(mod, args[argN], argNodes[argN]);
-        if (args[argN] && args[argN].argNames && args[argN].argNames[0] == '$rootScope') {
-          mod.rootScope = args[argN].args[0];
+        var result = applyWithInjection(mod, args[argN], argNodes[argN],true), fnType = result && result.fnType; 
+        if (fnType && fnType.argNames) {
+          for (var i = 0; i < fnType.argNames.length; i++) {
+            var name = fnType.argNames[i];
+            var args2 = fnType.args, argNodes2 = fnType.originNode.params;
+            var a = mod.addElement2(name, argNodes2[i], args2[i], "config");
+            a.XXXXXXXXXXXXXXXXXX = fnType;
+            
+            if (argNodes[0].elements) argNodes[0].elements[1].params[0].DDDDDDDDDDDDDDDDDDDD = a;
+            argNodes[argN].ROUTEPROVIDER = a;
+            
+            switch (name) {
+            case "$rootScope":
+              mod.rootScope = args[i];
+              break;         
+          }
         }
+      }
     };
   });
 
@@ -257,7 +273,11 @@
   } 
   
   AngularElement.prototype.addElement = function(args, argNodes, kind) {    
-    var node = argNodes[1], name = argNodes[0].value, originNode = argNodes[0], fnType = args[1];
+    var name = argNodes[0].value, originNode = argNodes[0], fnType = args[1];
+    return this.addElement2(name, originNode, fnType, kind);
+  }
+
+  AngularElement.prototype.addElement2 = function(name, originNode, fnType, kind) {    
     var fieldName = kind == "factory" ? "factories" : kind + "s";
     if (this.kinds.indexOf(fieldName) < 0) this.kinds.push(fieldName);
     var elts = !this[fieldName] ? this[fieldName] = {} : this[fieldName];
@@ -1621,18 +1641,20 @@
           }
         },         
         $routeProvider: {
-          "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider",
-          "!doc": "Checks current value of $location.hash() and scroll to related element.",
-          when: {
-            "!type": "fn(path: string, route: routeObj) -> !this",
-            "!doc": "Adds a new route definition to the $route service.",
-            "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#when",
-            "!effects": ["custom angular_templateUrl 1"]
-          },
-          otherwise: {
-            "!type": "fn(params: string) -> !this",
-            "!doc": "Sets route definition that will be used on route change when no other route definition is matched.",
-            "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#otherwise"
+          prototype: {
+            "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider",
+            "!doc": "Checks current value of $location.hash() and scroll to related element.",
+            when: {
+              "!type": "fn(path: string, route: routeObj) -> !this",
+              "!doc": "Adds a new route definition to the $route service.",
+              "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#when",
+              "!effects": ["custom angular_templateUrl 1"]
+            },
+            otherwise: {
+              "!type": "fn(params: string) -> !this",
+              "!doc": "Sets route definition that will be used on route change when no other route definition is matched.",
+              "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#otherwise"
+            }
           }
         }  
       }
