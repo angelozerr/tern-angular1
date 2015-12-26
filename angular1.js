@@ -57,7 +57,10 @@
 
   function getInclude(mod, name) {
     var glob = globalInclude(name);
-    if (glob) return glob;
+    if (glob) {
+      if (glob.getType().hasProp("prototype")) return new infer.Obj(glob.getType().hasProp("prototype").getType()); // ex : $routeProvider
+      return glob;
+    }
     if (!mod.injector) return infer.ANull;
     return mod.injector ? mod.injector.get(name) : infer.ANull;
   }
@@ -108,7 +111,16 @@
     return function(self, args, argNodes) {
       var mod = self.getType();
       if (mod && argNodes && argNodes[argN])
-        applyWithInjection(mod, args[argN], argNodes[argN]);
+        var result = applyWithInjection(mod, args[argN], argNodes[argN]), fnType = result && result.fnType;
+        if (fnType && fnType.args) {
+          for (var i = 0; i < fnType.args.length; i++) {
+            var arg = fnType.args[i], argType = arg.getType();            
+            if (argType && argType.name) {
+              var elt = mod.addElement2(argType.name, arg.originNode, argType, "config");
+              if (argType.name == "provider.$routeProvider") argType["$routeProvider"] = elt;
+            }
+          }
+        }
         if (args[argN] && args[argN].argNames && args[argN].argNames[0] == '$rootScope') {
           mod.rootScope = args[argN].args[0];
         }
@@ -257,7 +269,11 @@
   } 
   
   AngularElement.prototype.addElement = function(args, argNodes, kind) {    
-    var node = argNodes[1], name = argNodes[0].value, originNode = argNodes[0], fnType = args[1];
+    var name = argNodes[0].value, originNode = argNodes[0], fnType = args[1];
+    return this.addElement2(name, originNode, fnType, kind);
+  }
+
+  AngularElement.prototype.addElement2 = function(name, originNode, fnType, kind) {    
     var fieldName = kind == "factory" ? "factories" : kind + "s";
     if (this.kinds.indexOf(fieldName) < 0) this.kinds.push(fieldName);
     var elts = !this[fieldName] ? this[fieldName] = {} : this[fieldName];
@@ -489,6 +505,17 @@
       if (node && node.type == "Literal" && typeof node.value == "string") {        
         // mark node as templateUrl
         node.angular = {type: "templateUrl", templateUrl: resolveProjectPath(node.value)};
+      }
+      var routeProvider = self["$routeProvider"];
+      if (routeProvider) {
+        var arg = args && args[0], node = argNodes && argNodes[0]; // string
+        if (arg && node.type == "Literal" && typeof node.value == "string") {
+          var when = routeProvider.addElement2(node.value, node, null, "when");
+          var arg = args[1], node = argNodes[1]; // string
+          if (node && node.type == "ObjectExpression") {
+            when.getRetObjType = function() {return arg};             
+          }
+        }        
       }
     };
   });
@@ -1621,18 +1648,20 @@
           }
         },         
         $routeProvider: {
-          "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider",
-          "!doc": "Checks current value of $location.hash() and scroll to related element.",
-          when: {
-            "!type": "fn(path: string, route: routeObj) -> !this",
-            "!doc": "Adds a new route definition to the $route service.",
-            "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#when",
-            "!effects": ["custom angular_templateUrl 1"]
-          },
-          otherwise: {
-            "!type": "fn(params: string) -> !this",
-            "!doc": "Sets route definition that will be used on route change when no other route definition is matched.",
-            "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#otherwise"
+          prototype: {
+            "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider",
+            "!doc": "Checks current value of $location.hash() and scroll to related element.",
+            when: {
+              "!type": "fn(path: string, route: routeObj) -> !this",
+              "!doc": "Adds a new route definition to the $route service.",
+              "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#when",
+              "!effects": ["custom angular_templateUrl 1"]
+            },
+            otherwise: {
+              "!type": "fn(params: string) -> !this",
+              "!doc": "Sets route definition that will be used on route change when no other route definition is matched.",
+              "!url": "https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#otherwise"
+            }
           }
         }  
       }
