@@ -58,7 +58,7 @@
   function getInclude(mod, name) {
     var glob = globalInclude(name);
     if (glob) {
-      if (glob.getType().hasProp("prototype")) return new infer.Obj(glob.getType().hasProp("prototype").getType()); // ex : $routeProvider
+      if (glob.getType() && glob.getType().hasProp && glob.getType().hasProp("prototype")) return new infer.Obj(glob.getType().hasProp("prototype").getType()); // ex : $routeProvider
       return glob;
     }
     if (!mod.injector) return infer.ANull;
@@ -116,7 +116,7 @@
           for (var i = 0; i < fnType.args.length; i++) {
             var arg = fnType.args[i], argType = arg.getType();            
             if (argType && argType.name) {
-              var elt = mod.addElement2(argType.name, arg.originNode, argType, "config");
+              var elt = mod.addSimpleElement(argType.name, arg.originNode, argType, "config");
               if (argType.name == "provider.$routeProvider") argType["$routeProvider"] = elt;
             }
           }
@@ -270,10 +270,10 @@
   
   AngularElement.prototype.addElement = function(args, argNodes, kind) {    
     var name = argNodes[0].value, originNode = argNodes[0], fnType = args[1];
-    return this.addElement2(name, originNode, fnType, kind);
+    return this.addSimpleElement(name, originNode, fnType, kind);
   }
 
-  AngularElement.prototype.addElement2 = function(name, originNode, fnType, kind) {    
+  AngularElement.prototype.addSimpleElement = function(name, originNode, fnType, kind) {    
     var fieldName = kind == "factory" ? "factories" : kind + "s";
     if (this.kinds.indexOf(fieldName) < 0) this.kinds.push(fieldName);
     var elts = !this[fieldName] ? this[fieldName] = {} : this[fieldName];
@@ -510,7 +510,7 @@
       if (routeProvider) {
         var arg = args && args[0], node = argNodes && argNodes[0]; // string
         if (arg && node.type == "Literal" && typeof node.value == "string") {
-          var when = routeProvider.addElement2(node.value, node, null, "when");
+          var when = routeProvider.addSimpleElement(node.value, node, null, "when");
           var arg = args[1], node = argNodes[1]; // string
           if (node && node.type == "ObjectExpression") {
             when.getRetObjType = function() {return arg};             
@@ -680,6 +680,7 @@
   
   function typeAtTemplateUrl(file, pos, expr, type) {
     if (!(expr.node.type === "Literal" && typeof expr.node.value === "string")) return;
+    type = Object.create(type);
     type.origin = expr.node.angular.templateUrl;
     return type;
   }
